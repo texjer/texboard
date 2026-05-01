@@ -1,0 +1,22 @@
+# Secrets & tokens
+.env.local
+.google-tokens.json
+.weather-usage.json
+
+# Database
+texboard.db
+texboard.db-wal
+texboard.db-shm
+
+# Dependencies
+node_modules/
+
+# Personal data
+photos/
+config.json
+
+# OS files
+.DS_Store
+
+# Editor/tool config
+.claude/

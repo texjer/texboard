@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080, initial-scale=1.0">
+  <title>texboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="dashboard">
+
+    <section id="hero">
+      <div id="photo-frame">
+        <img id="photo-current" src="" alt="">
+        <img id="photo-next" src="" alt="">
+      </div>
+      <div id="top-bar">
+        <span id="api-usage">API: --/1000</span>
+        <span id="parking-badge">ASP: --</span>
+        <span id="subway-status"></span>
+        <span id="lunch-menu"></span>
+      </div>
+      <div id="hero-overlay">
+        <div id="datetime-text">--</div>
+
+        <div id="weather-panel">
+          <div id="wx-left">
+            <div id="wx-main-row">
+              <img id="weather-icon" src="" alt="">
+              <div id="weather-feels">--°</div>
+            </div>
+            <div id="wx-desc">--</div>
+            <div id="wx-actual">Actual --° · H --° / L --°</div>
+          </div>
+          <div id="wx-right">
+            <div class="wx-stat"><span class="wx-label">Wind</span><span id="wx-wind">--</span></div>
+            <div class="wx-stat"><span class="wx-label">Gusts</span><span id="wx-gust">--</span></div>
+            <div class="wx-stat"><span class="wx-label">Humidity</span><span id="wx-humidity">--</span></div>
+            <div class="wx-stat"><span class="wx-label">UV</span><span id="wx-uv">--</span></div>
+            <div class="wx-stat"><span class="wx-label">Sunrise</span><span id="wx-rise">--</span></div>
+            <div class="wx-stat"><span class="wx-label">Sunset</span><span id="wx-set">--</span></div>
+            <div class="wx-stat"><span class="wx-label">Pollen</span><span id="wx-pollen">--</span></div>
+          </div>
+        </div>
+
+        <div id="hourly-chart">
+          <div id="hourly-labels"></div>
+          <div id="chart-spacer"></div>
+          <canvas id="rain-canvas" width="1000" height="100"></canvas>
+        </div>
+        <div id="countdowns"></div>
+        <div id="cal-headers">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="calendar-section">
+      <div id="cal-grid"></div>
+    </section>
+
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
