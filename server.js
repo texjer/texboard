@@ -5,6 +5,7 @@ const https = require("https");
 const http = require("http");
 const Database = require("better-sqlite3");
 const { google } = require("googleapis");
+const multer = require("multer");
 
 loadEnv(".env.local");
 
@@ -16,6 +17,7 @@ const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const app = express();
 
 app.use(express.static("public"));
+app.use(express.json());
 
 // ---- SQLite setup ----
 const db = new Database(path.resolve(__dirname, "texboard.db"));
@@ -61,6 +63,33 @@ const getHistoricalAvg = db.prepare(`
 `);
 
 const getPastDay = db.prepare(`SELECT * FROM daily_weather WHERE date = @date`);
+
+// ---- Settings table ----
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )
+`);
+
+const getSettingStmt = db.prepare(`SELECT value FROM settings WHERE key = ?`);
+const setSettingStmt = db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`);
+const deleteSettingStmt = db.prepare(`DELETE FROM settings WHERE key = ?`);
+const getAllSettingsStmt = db.prepare(`SELECT key, value FROM settings`);
+
+function getSetting(key, fallback) {
+  const row = getSettingStmt.get(key);
+  if (row) return row.value;
+  return fallback !== undefined ? fallback : null;
+}
+
+function setSetting(key, value) {
+  if (value === null || value === undefined || value === "") {
+    deleteSettingStmt.run(key);
+  } else {
+    setSettingStmt.run(key, String(value));
+  }
+}
 
 function cacheWeatherData(data) {
   if (!data.daily) return;
@@ -124,8 +153,10 @@ app.get("/api/hash", (req, res) => {
 
 // ---- Routes ----
 app.get("/api/weather", async (req, res) => {
-  const apiKey = process.env.OPENWEATHERMAP_API_KEY;
-  const { lat, lon, units } = config.weather;
+  const apiKey = getSetting("OPENWEATHERMAP_API_KEY", process.env.OPENWEATHERMAP_API_KEY);
+  const lat = getSetting("weather_lat", config.weather.lat);
+  const lon = getSetting("weather_lon", config.weather.lon);
+  const units = getSetting("weather_units", config.weather.units);
   if (!apiKey) {
     return res.json({ error: "Weather API key not configured" });
   }
@@ -180,8 +211,8 @@ const TOKEN_FILE = path.resolve(__dirname, ".google-tokens.json");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 
 function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = getSetting("GOOGLE_CLIENT_ID", process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = getSetting("GOOGLE_CLIENT_SECRET", process.env.GOOGLE_CLIENT_SECRET);
   if (!clientId || !clientSecret) return null;
   return new google.auth.OAuth2(clientId, clientSecret, `http://localhost:${config.port}/auth/google/callback`);
 }
@@ -311,8 +342,9 @@ app.get("/api/calendar", async (req, res) => {
 });
 
 app.get("/api/pollen", async (req, res) => {
-  const apiKey = process.env.GOOGLE_POLLEN;
-  const { lat, lon } = config.weather;
+  const apiKey = getSetting("GOOGLE_POLLEN", process.env.GOOGLE_POLLEN);
+  const lat = getSetting("weather_lat", config.weather.lat);
+  const lon = getSetting("weather_lon", config.weather.lon);
   if (!apiKey) {
     return res.json({ error: "Google Pollen API key not configured" });
   }
@@ -493,6 +525,116 @@ function loadEnv(filepath) {
     if (!process.env[key]) process.env[key] = val;
   }
 }
+
+// ---- Admin API ----
+const SETTING_KEYS = [
+  "OPENWEATHERMAP_API_KEY",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_POLLEN",
+  "weather_lat",
+  "weather_lon",
+  "weather_units",
+  "calendar_type",
+  "apple_ical_urls",
+];
+
+function maskKey(val) {
+  if (!val || val.length <= 4) return val ? "••••" : "";
+  return "••••" + val.slice(-4);
+}
+
+const SECRET_KEYS = new Set(["OPENWEATHERMAP_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_POLLEN"]);
+
+app.get("/api/settings", (req, res) => {
+  const settings = {};
+  for (const key of SETTING_KEYS) {
+    const val = getSetting(key);
+    if (SECRET_KEYS.has(key)) {
+      settings[key] = { value: maskKey(val), hasValue: !!val };
+    } else {
+      settings[key] = { value: val || "", hasValue: !!val };
+    }
+  }
+  settings._fallbacks = {
+    weather_lat: config.weather.lat,
+    weather_lon: config.weather.lon,
+    weather_units: config.weather.units,
+  };
+  const googleAuth = !!loadTokens();
+  const calType = getSetting("calendar_type", "google");
+  let hasCalendar = false;
+  if (calType === "google") {
+    hasCalendar = googleAuth;
+  } else {
+    try {
+      const urls = JSON.parse(getSetting("apple_ical_urls", "[]"));
+      hasCalendar = urls.some(e => e.url);
+    } catch (e) {}
+  }
+  settings._status = {
+    weather: !!(getSetting("OPENWEATHERMAP_API_KEY", process.env.OPENWEATHERMAP_API_KEY)),
+    google: googleAuth,
+    calendar: hasCalendar,
+    pollen: !!(getSetting("GOOGLE_POLLEN", process.env.GOOGLE_POLLEN)),
+  };
+  res.json(settings);
+});
+
+app.post("/api/settings", (req, res) => {
+  const updates = req.body;
+  let count = 0;
+  for (const key of SETTING_KEYS) {
+    if (!(key in updates)) continue;
+    const val = updates[key];
+    if (val && val.startsWith("••••")) continue;
+    setSetting(key, val);
+    count++;
+  }
+  res.json({ saved: count });
+});
+
+app.get("/api/setup-status", (req, res) => {
+  const hasWeatherKey = !!(getSetting("OPENWEATHERMAP_API_KEY", process.env.OPENWEATHERMAP_API_KEY));
+  res.json({ needsSetup: !hasWeatherKey });
+});
+
+// ---- Photo upload ----
+const photosDir = path.resolve(config.photos.directory);
+if (!fs.existsSync(photosDir)) {
+  fs.mkdirSync(photosDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: photosDir,
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const name = `${base}-${Date.now()}${ext}`;
+      cb(null, name);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    cb(null, /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.originalname));
+  },
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+app.post("/api/photos/upload", upload.array("photos", 20), (req, res) => {
+  const uploaded = (req.files || []).map(f => f.filename);
+  res.json({ uploaded });
+});
+
+app.delete("/api/photos/:filename", (req, res) => {
+  const filename = path.basename(req.params.filename);
+  const filepath = path.join(photosDir, filename);
+  if (!fs.existsSync(filepath)) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  fs.unlinkSync(filepath);
+  res.json({ deleted: filename });
+});
 
 app.listen(config.port, "0.0.0.0", () => {
   console.log(`texboard running at http://localhost:${config.port}`);

@@ -73,11 +73,39 @@ body {
   z-index: 2;
 }
 
+#api-usage {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#admin-btn {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 26px;
+  text-align: center;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+#admin-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
 #parking-badge {
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 700;
   font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 #parking-badge.in-effect {
@@ -159,6 +187,8 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 /* ---- Date/Time ---- */

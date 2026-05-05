@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>texboard admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a0a;
+      color: #e8e8e8;
+      font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+      padding: 32px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    header h1 { font-size: 28px; font-weight: 300; }
+    header a { color: #5b9bf7; text-decoration: none; font-size: 14px; }
+
+    .section {
+      background: #151515;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #ccc;
+    }
+
+    label .hint {
+      font-weight: 400;
+      color: #666;
+      font-size: 12px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="url"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e8e8e8;
+      font-size: 14px;
+      font-family: monospace;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #5b9bf7;
+    }
+
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      padding-top: 4px;
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 400;
+    }
+
+    input[type="radio"] { accent-color: #5b9bf7; }
+
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary { background: #5b9bf7; color: #fff; }
+    .btn-primary:hover { background: #4a8ae6; }
+    .btn-secondary { background: #333; color: #ccc; }
+    .btn-secondary:hover { background: #444; }
+    .btn-danger {
+      background: transparent;
+      color: #c62828;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .btn-danger:hover { background: rgba(198, 40, 40, 0.15); }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 13px;
+    }
+
+    .save-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .save-msg {
+      font-size: 14px;
+      color: #4caf50;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .save-msg.show { opacity: 1; }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .status-dot.ok { background: #4caf50; }
+    .status-dot.missing { background: #666; }
+
+    .status-line {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+    }
+
+    .instructions {
+      font-size: 13px;
+      color: #777;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .instructions a {
+      color: #5b9bf7;
+      text-decoration: none;
+    }
+
+    .instructions a:hover { text-decoration: underline; }
+
+    .instructions ol {
+      margin: 6px 0 0 18px;
+    }
+
+    .instructions ol li {
+      margin-bottom: 2px;
+    }
+
+    /* Calendar type tabs */
+    .tab-group {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #0a0a0a;
+      color: #666;
+      border: none;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .tab:not(:last-child) {
+      border-right: 1px solid #333;
+    }
+
+    .tab.active {
+      background: #1a1a2e;
+      color: #5b9bf7;
+    }
+
+    .tab:hover:not(.active) {
+      background: #151515;
+      color: #aaa;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .google-auth-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: #5b9bf7;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .google-auth-link:hover { text-decoration: underline; }
+
+    .setup-banner {
+      background: rgba(91, 155, 247, 0.1);
+      border: 1px solid rgba(91, 155, 247, 0.3);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #8ab4f8;
+      line-height: 1.5;
+    }
+
+    /* iCal URL list */
+    .ical-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .ical-entry input {
+      flex: 1;
+    }
+
+    .ical-entry .ical-color {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #0a0a0a;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    .ical-remove {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .ical-remove:hover { color: #c62828; }
+
+    .add-link {
+      font-size: 13px;
+      color: #5b9bf7;
+      cursor: pointer;
+      background: none;
+      border: none;
+      margin-top: 4px;
+    }
+
+    .add-link:hover { text-decoration: underline; }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .photo-card {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #111;
+      aspect-ratio: 1;
+    }
+
+    .photo-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-card .delete-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.7);
+      color: #c62828;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .photo-card:hover .delete-btn { opacity: 1; }
+
+    .upload-area {
+      border: 2px dashed #333;
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: #5b9bf7;
+      color: #5b9bf7;
+    }
+
+    .upload-area input { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>texboard admin</h1>
+    <a href="/">&larr; Dashboard</a>
+  </header>
+
+  <div id="setup-banner" class="setup-banner" style="display: none;">
+    Welcome! Paste your OpenWeatherMap API key below to get started. The other settings are optional.
+  </div>
+
+  <div class="section">
+    <h2>Status</h2>
+    <div class="status-line"><span id="status-weather" class="status-dot missing"></span>Weather (OpenWeatherMap)</div>
+    <div class="status-line"><span id="status-calendar" class="status-dot missing"></span>Calendar</div>
+    <div class="status-line"><span id="status-pollen" class="status-dot missing"></span>Pollen</div>
+  </div>
+
+  <!-- Weather -->
+  <div class="section">
+    <h2>Weather</h2>
+    <div class="instructions">
+      Sign up at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org</a> (free account),
+      then subscribe to <strong>One Call API 3.0</strong> under "API keys." Free tier includes 1,000 calls/day.
+    </div>
+    <div class="field">
+      <label>OpenWeatherMap API Key <span class="hint">Required</span></label>
+      <input type="password" id="OPENWEATHERMAP_API_KEY" placeholder="Paste your API key">
+    </div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="section">
+    <h2>Calendar</h2>
+
+    <div class="tab-group">
+      <button class="tab active" data-tab="google" onclick="switchCalTab('google')">Google Calendar</button>
+      <button class="tab" data-tab="apple" onclick="switchCalTab('apple')">Apple Calendar</button>
+    </div>
+
+    <div id="cal-google" class="tab-content active">
+      <div class="instructions">
+        <ol>
+          <li>Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank">Google Cloud Console</a> and create a new project</li>
+          <li>Enable the <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank">Google Calendar API</a></li>
+          <li>Go to <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank">OAuth consent screen</a> &mdash; choose "External," fill in the app name, and add your email</li>
+          <li>Under "Scopes," add <code>calendar.readonly</code></li>
+          <li>Under "Test users," add your Gmail address</li>
+          <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Credentials</a> &rarr; Create Credentials &rarr; OAuth client ID &rarr; Web application</li>
+          <li>Add <code>http://localhost:3333/auth/google/callback</code> as an authorized redirect URI (replace with your Pi's address if accessing remotely)</li>
+          <li>Copy the Client ID and Client Secret below</li>
+        </ol>
+      </div>
+      <div class="field">
+        <label>Google Client ID <span class="hint">For calendar events</span></label>
+        <input type="password" id="GOOGLE_CLIENT_ID" placeholder="OAuth Client ID">
+      </div>
+      <div class="field">
+        <label>Google Client Secret <span class="hint">For calendar events</span></label>
+        <input type="password" id="GOOGLE_CLIENT_SECRET" placeholder="OAuth Client Secret">
+      </div>
+      <div id="google-status"></div>
+    </div>
+
+    <div id="cal-apple" class="tab-content">
+      <div class="instructions">
+        <strong>From a Mac:</strong> Open Calendar &rarr; right-click a calendar &rarr; Share Calendar &rarr; check "Public Calendar" &rarr; copy the URL.<br><br>
+        <strong>From iCloud.com:</strong> Open Calendar &rarr; click the share icon next to a calendar &rarr; check "Public Calendar" &rarr; copy the link.<br><br>
+        The URL starts with <code>webcal://</code> — paste it as-is. Add one entry per calendar you want to show.
+      </div>
+      <div id="ical-list"></div>
+      <button class="add-link" onclick="addIcalRow()">+ Add calendar URL</button>
+    </div>
+  </div>
+
+  <!-- Pollen -->
+  <div class="section">
+    <h2>Pollen</h2>
+    <div class="instructions">
+      Uses the same Google Cloud project as Calendar. Enable the
+      <a href="https://console.cloud.google.com/apis/library/pollen.googleapis.com" target="_blank">Pollen API</a>,
+      then go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Credentials</a> &rarr;
+      Create Credentials &rarr; API key.
+    </div>
+    <div class="field">
+      <label>Google Pollen API Key <span class="hint">Optional</span></label>
+      <input type="password" id="GOOGLE_POLLEN" placeholder="Pollen API key">
+    </div>
+  </div>
+
+  <!-- Location -->
+  <div class="section">
+    <h2>Location</h2>
+    <div class="instructions">
+      Enter your coordinates for weather and pollen data. You can find them by searching your address on
+      <a href="https://www.latlong.net/" target="_blank">latlong.net</a>.
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Latitude</label>
+        <input type="text" id="weather_lat" placeholder="40.7128">
+      </div>
+      <div class="field">
+        <label>Longitude</label>
+        <input type="text" id="weather_lon" placeholder="-74.0060">
+      </div>
+    </div>
+    <div class="field">
+      <label>Units</label>
+      <div class="radio-group">
+        <label><input type="radio" name="weather_units" value="imperial" checked> Imperial (F, mph)</label>
+        <label><input type="radio" name="weather_units" value="metric"> Metric (C, m/s)</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="save-row">
+    <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    <span id="save-msg" class="save-msg">Saved!</span>
+  </div>
+
+  <!-- Photos -->
+  <div class="section">
+    <h2>Photos</h2>
+    <div class="upload-area" id="upload-area">
+      Click or drag photos here to upload
+      <input type="file" id="photo-input" multiple accept="image/*">
+    </div>
+    <div class="photo-grid" id="photo-grid"></div>
+  </div>
+
+  <script>
+    const FIELDS = [
+      "OPENWEATHERMAP_API_KEY",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "GOOGLE_POLLEN",
+      "weather_lat",
+      "weather_lon",
+    ];
+
+    let calendarType = "google";
+    let icalUrls = [];
+
+    function switchCalTab(tab) {
+      calendarType = tab;
+      document.querySelectorAll(".tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.tab === tab);
+      });
+      document.getElementById("cal-google").classList.toggle("active", tab === "google");
+      document.getElementById("cal-apple").classList.toggle("active", tab === "apple");
+    }
+
+    function addIcalRow(url, color) {
+      const list = document.getElementById("ical-list");
+      const idx = list.children.length;
+      const div = document.createElement("div");
+      div.className = "ical-entry";
+      div.innerHTML = `
+        <input type="url" placeholder="webcal://p123-caldav.icloud.com/..." value="${url || ""}">
+        <input type="color" class="ical-color" value="${color || "#5b9bf7"}" title="Calendar color">
+        <button class="ical-remove" onclick="this.parentElement.remove()" title="Remove">&times;</button>
+      `;
+      list.appendChild(div);
+    }
+
+    function getIcalUrls() {
+      const entries = document.querySelectorAll("#ical-list .ical-entry");
+      const urls = [];
+      entries.forEach(entry => {
+        const url = entry.querySelector("input[type='url']").value.trim();
+        const color = entry.querySelector(".ical-color").value;
+        if (url) urls.push({ url, color });
+      });
+      return urls;
+    }
+
+    async function loadSettings() {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+
+      for (const key of FIELDS) {
+        const el = document.getElementById(key);
+        if (!el || !data[key]) continue;
+        if (data[key].hasValue && data[key].value) {
+          el.value = data[key].value;
+        }
+      }
+
+      if (data._fallbacks) {
+        for (const key of ["weather_lat", "weather_lon"]) {
+          const el = document.getElementById(key);
+          if (!el.value && data._fallbacks[key]) {
+            el.placeholder = data._fallbacks[key];
+          }
+        }
+        const units = data.weather_units?.value || data._fallbacks.weather_units || "imperial";
+        const radio = document.querySelector(`input[name="weather_units"][value="${units}"]`);
+        if (radio) radio.checked = true;
+      }
+
+      if (data.calendar_type?.value) {
+        switchCalTab(data.calendar_type.value);
+      }
+
+      const list = document.getElementById("ical-list");
+      list.innerHTML = "";
+      if (data.apple_ical_urls?.value) {
+        try {
+          const urls = JSON.parse(data.apple_ical_urls.value);
+          urls.forEach(entry => addIcalRow(entry.url, entry.color));
+        } catch (e) {}
+      }
+      if (list.children.length === 0) {
+        addIcalRow();
+      }
+
+      if (data._status) {
+        document.getElementById("status-weather").className =
+          "status-dot " + (data._status.weather ? "ok" : "missing");
+        document.getElementById("status-calendar").className =
+          "status-dot " + (data._status.calendar ? "ok" : "missing");
+        document.getElementById("status-pollen").className =
+          "status-dot " + (data._status.pollen ? "ok" : "missing");
+
+        if (!data._status.weather) {
+          document.getElementById("setup-banner").style.display = "block";
+        }
+
+        const googleEl = document.getElementById("google-status");
+        if (data._status.google) {
+          googleEl.innerHTML = '<span style="color: #4caf50;">Connected</span>';
+        } else {
+          const hasKeys = data.GOOGLE_CLIENT_ID?.hasValue && data.GOOGLE_CLIENT_SECRET?.hasValue;
+          if (hasKeys) {
+            googleEl.innerHTML =
+              'Keys saved. <a class="google-auth-link" href="/auth/google">Connect your Google account</a> to finish setup.';
+          } else {
+            googleEl.innerHTML = '<span style="color: #666;">Add your credentials above, save, then connect.</span>';
+          }
+        }
+      }
+    }
+
+    async function saveSettings() {
+      const body = {};
+      for (const key of FIELDS) {
+        body[key] = document.getElementById(key).value;
+      }
+      body.weather_units = document.querySelector('input[name="weather_units"]:checked').value;
+      body.calendar_type = calendarType;
+      body.apple_ical_urls = JSON.stringify(getIcalUrls());
+
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      const msg = document.getElementById("save-msg");
+      msg.textContent = `Saved ${data.saved} setting${data.saved !== 1 ? "s" : ""}!`;
+      msg.classList.add("show");
+      setTimeout(() => msg.classList.remove("show"), 2500);
+
+      loadSettings();
+    }
+
+    async function loadPhotos() {
+      const res = await fetch("/api/photos");
+      const data = await res.json();
+      const grid = document.getElementById("photo-grid");
+
+      grid.innerHTML = data.photos
+        .map((src) => {
+          const name = src.split("/").pop();
+          return `<div class="photo-card">
+            <img src="${src}" alt="${name}">
+            <button class="delete-btn" onclick="deletePhoto('${name}')" title="Delete">&times;</button>
+          </div>`;
+        })
+        .join("");
+    }
+
+    async function deletePhoto(name) {
+      if (!confirm(`Delete ${name}?`)) return;
+      await fetch(`/api/photos/${encodeURIComponent(name)}`, { method: "DELETE" });
+      loadPhotos();
+    }
+
+    async function uploadPhotos(files) {
+      const form = new FormData();
+      for (const file of files) {
+        form.append("photos", file);
+      }
+      await fetch("/api/photos/upload", { method: "POST", body: form });
+      loadPhotos();
+    }
+
+    const uploadArea = document.getElementById("upload-area");
+    const photoInput = document.getElementById("photo-input");
+
+    uploadArea.addEventListener("click", () => photoInput.click());
+    photoInput.addEventListener("change", () => {
+      if (photoInput.files.length) uploadPhotos(photoInput.files);
+    });
+
+    uploadArea.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadArea.classList.add("dragover");
+    });
+    uploadArea.addEventListener("dragleave", () => {
+      uploadArea.classList.remove("dragover");
+    });
+    uploadArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove("dragover");
+      if (e.dataTransfer.files.length) uploadPhotos(e.dataTransfer.files);
+    });
+
+    loadSettings();
+    loadPhotos();
+  </script>
+</body>
+</html>
