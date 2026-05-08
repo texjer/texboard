@@ -351,6 +351,115 @@
     }
 
     .upload-area input { display: none; }
+
+    /* Display schedule */
+    .schedule-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .schedule-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #222;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .schedule-option:hover {
+      border-color: #444;
+    }
+
+    .schedule-option.selected {
+      border-color: #5b9bf7;
+      background: rgba(91, 155, 247, 0.05);
+    }
+
+    .schedule-option input[type="radio"] {
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .schedule-option-body {
+      flex: 1;
+    }
+
+    .schedule-option-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ccc;
+      margin-bottom: 2px;
+    }
+
+    .schedule-option-desc {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .schedule-fields {
+      margin-top: 10px;
+      display: none;
+    }
+
+    .schedule-option.selected .schedule-fields {
+      display: block;
+    }
+
+    .schedule-fields .row {
+      align-items: center;
+    }
+
+    .schedule-fields input[type="time"] {
+      padding: 8px 10px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e8e8e8;
+      font-size: 14px;
+    }
+
+    .schedule-fields input[type="time"]:focus {
+      outline: none;
+      border-color: #5b9bf7;
+    }
+
+    .schedule-fields input[type="number"] {
+      width: 70px;
+      padding: 8px 10px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e8e8e8;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .schedule-fields input[type="number"]:focus {
+      outline: none;
+      border-color: #5b9bf7;
+    }
+
+    .offset-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    .monitor-status {
+      font-size: 13px;
+      color: #888;
+      margin-top: 12px;
+    }
+
+    .monitor-status .dot-on { color: #4caf50; }
+    .monitor-status .dot-off { color: #666; }
   </style>
 </head>
 <body>
@@ -365,9 +474,36 @@
 
   <div class="section">
     <h2>Status</h2>
+    <div class="status-line"><span id="status-location" class="status-dot missing"></span>Location</div>
     <div class="status-line"><span id="status-weather" class="status-dot missing"></span>Weather (OpenWeatherMap)</div>
     <div class="status-line"><span id="status-calendar" class="status-dot missing"></span>Calendar</div>
     <div class="status-line"><span id="status-pollen" class="status-dot missing"></span>Pollen</div>
+  </div>
+
+  <!-- Location -->
+  <div class="section">
+    <h2>Location</h2>
+    <div class="instructions">
+      Enter your coordinates for weather and pollen data. You can find them by searching your address on
+      <a href="https://www.latlong.net/" target="_blank">latlong.net</a>.
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Latitude</label>
+        <input type="text" id="weather_lat" placeholder="40.7128">
+      </div>
+      <div class="field">
+        <label>Longitude</label>
+        <input type="text" id="weather_lon" placeholder="-74.0060">
+      </div>
+    </div>
+    <div class="field">
+      <label>Units</label>
+      <div class="radio-group">
+        <label><input type="radio" name="weather_units" value="imperial" checked> Imperial (F, mph)</label>
+        <label><input type="radio" name="weather_units" value="metric"> Metric (C, m/s)</label>
+      </div>
+    </div>
   </div>
 
   <!-- Weather -->
@@ -442,30 +578,59 @@
     </div>
   </div>
 
-  <!-- Location -->
+  <!-- Display -->
   <div class="section">
-    <h2>Location</h2>
+    <h2>Display Schedule</h2>
     <div class="instructions">
-      Enter your coordinates for weather and pollen data. You can find them by searching your address on
-      <a href="https://www.latlong.net/" target="_blank">latlong.net</a>.
+      Control when the monitor turns on and off. Useful for saving power overnight.
     </div>
-    <div class="row">
-      <div class="field">
-        <label>Latitude</label>
-        <input type="text" id="weather_lat" placeholder="40.7128">
-      </div>
-      <div class="field">
-        <label>Longitude</label>
-        <input type="text" id="weather_lon" placeholder="-74.0060">
-      </div>
+    <div class="schedule-options">
+      <label class="schedule-option selected" onclick="selectSchedule('off')">
+        <input type="radio" name="display_schedule" value="off" checked>
+        <div class="schedule-option-body">
+          <div class="schedule-option-label">Always on</div>
+          <div class="schedule-option-desc">Monitor stays on 24/7</div>
+        </div>
+      </label>
+
+      <label class="schedule-option" onclick="selectSchedule('fixed')">
+        <input type="radio" name="display_schedule" value="fixed">
+        <div class="schedule-option-body">
+          <div class="schedule-option-label">Fixed times</div>
+          <div class="schedule-option-desc">Set specific on/off times</div>
+          <div class="schedule-fields">
+            <div class="row" style="gap: 16px; margin-top: 8px;">
+              <div class="field" style="flex:none;">
+                <label>Turn on</label>
+                <input type="time" id="display_on_time" value="06:45">
+              </div>
+              <div class="field" style="flex:none;">
+                <label>Turn off</label>
+                <input type="time" id="display_off_time" value="20:15">
+              </div>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <label class="schedule-option" onclick="selectSchedule('auto')">
+        <input type="radio" name="display_schedule" value="auto">
+        <div class="schedule-option-body">
+          <div class="schedule-option-label">Sunrise / Sunset</div>
+          <div class="schedule-option-desc">Automatically follow the sun based on your location</div>
+          <div class="schedule-fields">
+            <div class="offset-row" style="margin-top: 8px;">
+              Turn on <input type="number" id="display_on_offset" value="-30"> min relative to sunrise
+            </div>
+            <div class="offset-row">
+              Turn off <input type="number" id="display_off_offset" value="15"> min relative to sunset
+            </div>
+            <div class="schedule-option-desc">Negative = before, positive = after. e.g. -30 = 30 min before sunrise.</div>
+          </div>
+        </div>
+      </label>
     </div>
-    <div class="field">
-      <label>Units</label>
-      <div class="radio-group">
-        <label><input type="radio" name="weather_units" value="imperial" checked> Imperial (F, mph)</label>
-        <label><input type="radio" name="weather_units" value="metric"> Metric (C, m/s)</label>
-      </div>
-    </div>
+    <div class="monitor-status" id="monitor-status"></div>
   </div>
 
   <div class="save-row">
@@ -476,6 +641,10 @@
   <!-- Photos -->
   <div class="section">
     <h2>Photos</h2>
+    <div class="field">
+      <label>Cycle every <span class="hint">seconds</span></label>
+      <input type="number" id="photo_interval" value="15" min="5" max="300" style="width: 80px;">
+    </div>
     <div class="upload-area" id="upload-area">
       Click or drag photos here to upload
       <input type="file" id="photo-input" multiple accept="image/*">
@@ -495,6 +664,15 @@
 
     let calendarType = "google";
     let icalUrls = [];
+
+    function selectSchedule(mode) {
+      document.querySelectorAll(".schedule-option").forEach(opt => {
+        const radio = opt.querySelector("input[type='radio']");
+        const selected = radio.value === mode;
+        radio.checked = selected;
+        opt.classList.toggle("selected", selected);
+      });
+    }
 
     function switchCalTab(tab) {
       calendarType = tab;
@@ -569,7 +747,31 @@
         addIcalRow();
       }
 
+      // Photos
+      if (data.photo_interval?.value) {
+        document.getElementById("photo_interval").value = data.photo_interval.value;
+      }
+
+      // Display schedule
+      if (data.display_schedule?.value) {
+        selectSchedule(data.display_schedule.value);
+      }
+      if (data.display_on_time?.value) {
+        document.getElementById("display_on_time").value = data.display_on_time.value;
+      }
+      if (data.display_off_time?.value) {
+        document.getElementById("display_off_time").value = data.display_off_time.value;
+      }
+      if (data.display_on_offset?.value) {
+        document.getElementById("display_on_offset").value = data.display_on_offset.value;
+      }
+      if (data.display_off_offset?.value) {
+        document.getElementById("display_off_offset").value = data.display_off_offset.value;
+      }
+
       if (data._status) {
+        document.getElementById("status-location").className =
+          "status-dot " + (data._status.location ? "ok" : "missing");
         document.getElementById("status-weather").className =
           "status-dot " + (data._status.weather ? "ok" : "missing");
         document.getElementById("status-calendar").className =
@@ -604,6 +806,12 @@
       body.weather_units = document.querySelector('input[name="weather_units"]:checked').value;
       body.calendar_type = calendarType;
       body.apple_ical_urls = JSON.stringify(getIcalUrls());
+      body.photo_interval = document.getElementById("photo_interval").value;
+      body.display_schedule = document.querySelector('input[name="display_schedule"]:checked').value;
+      body.display_on_time = document.getElementById("display_on_time").value;
+      body.display_off_time = document.getElementById("display_off_time").value;
+      body.display_on_offset = document.getElementById("display_on_offset").value;
+      body.display_off_offset = document.getElementById("display_off_offset").value;
 
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -672,8 +880,22 @@
       if (e.dataTransfer.files.length) uploadPhotos(e.dataTransfer.files);
     });
 
+    async function loadMonitorStatus() {
+      try {
+        const res = await fetch("/api/display-status");
+        const data = await res.json();
+        const el = document.getElementById("monitor-status");
+        if (data.monitorOn) {
+          el.innerHTML = '<span class="dot-on">Monitor is on</span>';
+        } else {
+          el.innerHTML = '<span class="dot-off">Monitor is off</span>';
+        }
+      } catch (e) {}
+    }
+
     loadSettings();
     loadPhotos();
+    loadMonitorStatus();
   </script>
 </body>
 </html>

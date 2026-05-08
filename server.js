@@ -6,6 +6,8 @@ const http = require("http");
 const Database = require("better-sqlite3");
 const { google } = require("googleapis");
 const multer = require("multer");
+const cron = require("node-cron");
+const { execSync } = require("child_process");
 
 loadEnv(".env.local");
 
@@ -486,7 +488,7 @@ app.use("/photos", express.static(path.resolve(config.photos.directory)));
 
 app.get("/api/config", (req, res) => {
   res.json({
-    photoInterval: config.photos.intervalSeconds,
+    photoInterval: parseInt(getSetting("photo_interval", config.photos.intervalSeconds)) || 15,
   });
 });
 
@@ -537,6 +539,12 @@ const SETTING_KEYS = [
   "weather_units",
   "calendar_type",
   "apple_ical_urls",
+  "photo_interval",
+  "display_schedule",
+  "display_on_time",
+  "display_off_time",
+  "display_on_offset",
+  "display_off_offset",
 ];
 
 function maskKey(val) {
@@ -572,7 +580,9 @@ app.get("/api/settings", (req, res) => {
       hasCalendar = urls.some(e => e.url);
     } catch (e) {}
   }
+  const hasLocation = !!(getSetting("weather_lat") || config.weather.lat);
   settings._status = {
+    location: hasLocation,
     weather: !!(getSetting("OPENWEATHERMAP_API_KEY", process.env.OPENWEATHERMAP_API_KEY)),
     google: googleAuth,
     calendar: hasCalendar,
@@ -634,6 +644,75 @@ app.delete("/api/photos/:filename", (req, res) => {
   }
   fs.unlinkSync(filepath);
   res.json({ deleted: filename });
+});
+
+// ---- Display schedule ----
+let monitorIsOn = true;
+
+function setMonitor(on) {
+  if (on === monitorIsOn) return;
+  const uid = process.getuid?.();
+  if (uid === undefined) return;
+  const env = `WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/${uid}`;
+  const cmd = on
+    ? `${env} wlr-randr --output HDMI-A-1 --on --transform 90`
+    : `${env} wlr-randr --output HDMI-A-1 --off`;
+  try {
+    execSync(cmd, { shell: true, timeout: 5000 });
+    monitorIsOn = on;
+    console.log(`Monitor turned ${on ? "on" : "off"}`);
+  } catch (e) {}
+}
+
+function getTodaySunTimes() {
+  const today = new Date().toLocaleDateString("en-CA");
+  const row = getPastDay.get({ date: today });
+  if (row?.sunrise && row?.sunset) return { sunrise: row.sunrise, sunset: row.sunset };
+  return null;
+}
+
+function checkDisplaySchedule() {
+  const mode = getSetting("display_schedule", "off");
+  if (mode === "off") return;
+
+  const now = new Date();
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+
+  if (mode === "fixed") {
+    const onTime = getSetting("display_on_time", "06:45");
+    const offTime = getSetting("display_off_time", "20:15");
+    const [onH, onM] = onTime.split(":").map(Number);
+    const [offH, offM] = offTime.split(":").map(Number);
+    const onMin = onH * 60 + onM;
+    const offMin = offH * 60 + offM;
+
+    if (onMin < offMin) {
+      setMonitor(minutesSinceMidnight >= onMin && minutesSinceMidnight < offMin);
+    } else {
+      setMonitor(minutesSinceMidnight >= onMin || minutesSinceMidnight < offMin);
+    }
+  } else if (mode === "auto") {
+    const sun = getTodaySunTimes();
+    if (!sun) return;
+    const onOffset = parseInt(getSetting("display_on_offset", "-30")) || 0;
+    const offOffset = parseInt(getSetting("display_off_offset", "15")) || 0;
+    const onTime = new Date((sun.sunrise + onOffset * 60) * 1000);
+    const offTime = new Date((sun.sunset + offOffset * 60) * 1000);
+    const onMin = onTime.getHours() * 60 + onTime.getMinutes();
+    const offMin = offTime.getHours() * 60 + offTime.getMinutes();
+
+    if (onMin < offMin) {
+      setMonitor(minutesSinceMidnight >= onMin && minutesSinceMidnight < offMin);
+    } else {
+      setMonitor(minutesSinceMidnight >= onMin || minutesSinceMidnight < offMin);
+    }
+  }
+}
+
+cron.schedule("* * * * *", checkDisplaySchedule);
+
+app.get("/api/display-status", (req, res) => {
+  res.json({ monitorOn: monitorIsOn });
 });
 
 app.listen(config.port, "0.0.0.0", () => {

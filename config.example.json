@@ -7,6 +7,6 @@
   },
   "photos": {
     "directory": "./photos",
-    "intervalSeconds": 30
+    "intervalSeconds": 15
   }
 }

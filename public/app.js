@@ -119,7 +119,7 @@ function renderHourlyChart() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const barW = canvas.width / hours.length;
-  const padTop = 60;
+  const padTop = 90;
   const padBot = 50;
   const chartH = canvas.height - padTop - padBot;
   const rains = hours.map(h => (h.rain?.["1h"] || 0) + (h.snow?.["1h"] || 0));
@@ -145,6 +145,17 @@ function renderHourlyChart() {
     const isDay = isDaytime(hours[i].dt);
     ctx.fillStyle = isDay ? "rgba(245, 190, 60, 0.06)" : "rgba(30, 40, 80, 0.3)";
     ctx.fillRect(i * barW, 0, barW, canvas.height);
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 40);
+    if (isDay) {
+      grad.addColorStop(0, "rgba(245, 190, 60, 0.2)");
+      grad.addColorStop(1, "rgba(245, 190, 60, 0)");
+    } else {
+      grad.addColorStop(0, "rgba(80, 100, 200, 0.2)");
+      grad.addColorStop(1, "rgba(80, 100, 200, 0)");
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(i * barW, 0, barW, 40);
   }
 
   // Sunrise/sunset vertical lines
@@ -228,12 +239,23 @@ function renderHourlyChart() {
   }
   ctx.stroke();
 
+  function shadowText(text, x, y, color) {
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.9)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
   // Current temp label at start of line
-  ctx.fillStyle = "#f5a623";
-  ctx.font = "bold 20px -apple-system, sans-serif";
-  ctx.textAlign = "right";
+  ctx.font = "bold 28px -apple-system, sans-serif";
+  ctx.textAlign = "left";
   const startTempY = tempY(temps[0]);
-  ctx.fillText(`${Math.round(temps[0])}°`, barW / 2 - 4, startTempY + 6);
+  shadowText(`${Math.round(temps[0])}°`, 6, startTempY + 6, "#f5a623");
   ctx.textAlign = "center";
 
   // Find high and low points and label them
@@ -243,7 +265,7 @@ function renderHourlyChart() {
     if (temps[i] < temps[minIdx]) minIdx = i;
   }
 
-  ctx.font = "bold 22px -apple-system, sans-serif";
+  ctx.font = "bold 32px -apple-system, sans-serif";
   ctx.textAlign = "center";
 
   if (maxIdx > 0) {
@@ -251,9 +273,9 @@ function renderHourlyChart() {
     const highY = tempY(temps[maxIdx]);
     ctx.fillStyle = "#f5a623";
     ctx.beginPath();
-    ctx.arc(highX, highY, 5, 0, Math.PI * 2);
+    ctx.arc(highX, highY, 6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillText(`${Math.round(temps[maxIdx])}°`, highX, highY - 10);
+    shadowText(`${Math.round(temps[maxIdx])}°`, highX, highY - 14, "#f5a623");
   }
 
   if (minIdx > 0) {
@@ -261,9 +283,9 @@ function renderHourlyChart() {
     const lowY = tempY(temps[minIdx]);
     ctx.fillStyle = "#8ab4f8";
     ctx.beginPath();
-    ctx.arc(lowX, lowY, 5, 0, Math.PI * 2);
+    ctx.arc(lowX, lowY, 6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillText(`${Math.round(temps[minIdx])}°`, lowX, lowY + 28);
+    shadowText(`${Math.round(temps[minIdx])}°`, lowX, lowY + 34, "#8ab4f8");
   }
 
   // Wind line
@@ -285,10 +307,9 @@ function renderHourlyChart() {
 
   // Current wind label at start of line
   const startWindY = canvas.height - padBot - (winds[0] / maxW) * chartH;
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.font = "bold 18px -apple-system, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(`${Math.round(winds[0])}`, barW / 2 - 4, startWindY + 5);
+  ctx.font = "bold 26px -apple-system, sans-serif";
+  ctx.textAlign = "left";
+  shadowText(`${Math.round(winds[0])}`, 6, startWindY + 5, "rgba(255,255,255,0.4)");
   ctx.textAlign = "center";
 
   // Wind peak label
@@ -299,9 +320,8 @@ function renderHourlyChart() {
   if (windMaxIdx > 0) {
     const wmX = windMaxIdx * barW + barW / 2;
     const wmY = canvas.height - padBot - (winds[windMaxIdx] / maxW) * chartH;
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "16px -apple-system, sans-serif";
-    ctx.fillText(`${Math.round(winds[windMaxIdx])}mph`, wmX, wmY - 6);
+    ctx.font = "bold 24px -apple-system, sans-serif";
+    shadowText(`${Math.round(winds[windMaxIdx])}mph`, wmX, wmY - 10, "rgba(255,255,255,0.4)");
   }
 
   // Labels (every 3 hours)
@@ -424,27 +444,49 @@ loadLunch();
 setInterval(loadLunch, 60 * 60 * 1000);
 
 // ---- Pollen ----
+const pollenColors = { 0: "#666", 1: "#4caf50", 2: "#ffc107", 3: "#ff9800", 4: "#ff5722", 5: "#d32f2f" };
+
+function pollenIcon(type, color) {
+  const s = `style="width:20px;height:20px;vertical-align:-3px;fill:${color}"`;
+  if (type === "tree") return `<svg ${s} viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><rect x="11" y="14" width="2" height="8"/><rect x="8" y="20" width="8" height="2" rx="1"/></svg>`;
+  if (type === "grass") return `<svg ${s} viewBox="0 0 24 24"><path d="M7 22V12C7 9 5 7 3 5" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M12 22V8C12 5 10 3 8 1" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 22V12C17 9 19 7 21 5" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+  return `<svg ${s} viewBox="0 0 24 24"><path d="M12 22V10" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M12 14C9 11 5 11 4 13" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M12 11C15 8 19 8 20 10" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="${color}"/><circle cx="9" cy="3.5" r="1.2" fill="${color}" opacity=".7"/><circle cx="15" cy="3.5" r="1.2" fill="${color}" opacity=".7"/><circle cx="10" cy="6.5" r="1" fill="${color}" opacity=".6"/><circle cx="14" cy="6.5" r="1" fill="${color}" opacity=".6"/></svg>`;
+}
+
+function pollenBars(index, color) {
+  const total = 5;
+  const barW = 4;
+  const gap = 2;
+  const maxH = 18;
+  const w = total * (barW + gap) - gap;
+  let bars = "";
+  for (let i = 0; i < total; i++) {
+    const h = Math.round(((i + 1) / total) * maxH);
+    const y = maxH - h;
+    const fill = i < index ? color : "rgba(255,255,255,0.12)";
+    bars += `<rect x="${i * (barW + gap)}" y="${y}" width="${barW}" height="${h}" rx="1" fill="${fill}"/>`;
+  }
+  return `<svg style="width:${w}px;height:${maxH}px;vertical-align:-3px" viewBox="0 0 ${w} ${maxH}">${bars}</svg>`;
+}
+
 async function loadPollen() {
   try {
     const res = await fetch("/api/pollen");
     const data = await res.json();
+    const el = document.getElementById("wx-pollen");
     if (data.error) {
-      document.getElementById("wx-pollen").textContent = "N/A";
+      el.textContent = "N/A";
       return;
     }
 
-    const types = [data.tree, data.grass, data.weed].filter(t => t?.index != null);
-    if (!types.length) {
-      document.getElementById("wx-pollen").innerHTML = "N/A";
-      return;
+    const parts = [];
+    for (const type of ["tree", "grass", "weed"]) {
+      const t = data[type];
+      if (!t || t.index == null) continue;
+      const color = pollenColors[t.index] || "#666";
+      parts.push(`${pollenIcon(type, color)}<span style="margin-left:3px">${pollenBars(t.index, color)}</span>`);
     }
-    const maxIndex = Math.max(...types.map(t => t.index));
-    const labels = { 0: "None", 1: "Minimal", 2: "Moderate", 3: "High", 4: "Very High", 5: "Extreme" };
-    const colors = { 0: "#666", 1: "#4caf50", 2: "#ffc107", 3: "#ff9800", 4: "#ff5722", 5: "#d32f2f" };
-    const color = colors[maxIndex] || "#666";
-    const label = labels[maxIndex] || "Unknown";
-    document.getElementById("wx-pollen").innerHTML =
-      `<span style="color:${color};font-weight:700">${label}</span>`;
+    el.innerHTML = parts.length ? parts.join('<span style="margin:0 6px"></span>') : "N/A";
   } catch (e) {
     console.error("Pollen error:", e);
   }

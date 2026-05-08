@@ -6,6 +6,15 @@ set -e
 
 echo "=== texboard Pi setup ==="
 
+# Set hostname so the Pi is reachable at texboard.local
+CURRENT_HOST=$(hostname)
+if [ "$CURRENT_HOST" != "texboard" ]; then
+  echo "Setting hostname to 'texboard' (was '$CURRENT_HOST')..."
+  sudo hostnamectl set-hostname texboard
+  sudo sed -i "s/$CURRENT_HOST/texboard/g" /etc/hosts
+  echo "Pi will be reachable at http://texboard.local:3333"
+fi
+
 # Install Node.js if not present
 if ! command -v node &> /dev/null; then
   echo "Installing Node.js..."
